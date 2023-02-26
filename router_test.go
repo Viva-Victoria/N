@@ -98,7 +98,7 @@ func TestNRouter_ServeHTTP(t *testing.T) {
 	rq := httptest.NewRequest(http.MethodPost, "/user/15", nil)
 	r.ServeHTTP(rs, rq)
 
-	time.Sleep(time.Millisecond * 5)
+	time.Sleep(time.Millisecond * 4)
 
 	require.True(t, called)
 }
