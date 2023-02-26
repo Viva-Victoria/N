@@ -82,9 +82,15 @@ func (N *NRouter) ServeHTTP(rs http.ResponseWriter, rq *http.Request) {
 			matches    = route.regexp.FindAllStringSubmatch(rq.URL.Path, -1)
 			groupNames = route.regexp.SubexpNames()
 		)
-		for groupId, group := range matches {
-			name := groupNames[groupId]
-			vars.Set(name, group[0])
+		for _, match := range matches {
+			for groupId, group := range match {
+				name := groupNames[groupId]
+				if len(name) == 0 {
+					continue
+				}
+
+				vars.Set(name, group)
+			}
 		}
 
 		newRS := NewResponseWriter(rs)

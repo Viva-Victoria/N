@@ -68,5 +68,32 @@ func (N NDirRoute) Delete(path string, handler Handler) Route {
 }
 
 func (N NDirRoute) getPath(routePath string) string {
-	return path.Join(N.basePath, _pathFixer.Replace(routePath))
+	return path.Join(N.basePath, fixPath(routePath))
+}
+
+func fixPath(path string) string {
+	var (
+		varOpened bool
+	)
+
+	runes := []rune(path)
+	for i, r := range runes {
+		if r == '{' {
+			varOpened = true
+			continue
+		}
+		if r == '}' {
+			varOpened = false
+			continue
+		}
+
+		if varOpened {
+			continue
+		}
+		if r == '\\' {
+			runes[i] = '/'
+		}
+	}
+
+	return string(runes)
 }

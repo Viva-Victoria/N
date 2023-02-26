@@ -2,6 +2,7 @@ package n
 
 import (
 	"gitea.voopsen/n/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
@@ -72,4 +73,32 @@ func TestNewRouter(t *testing.T) {
 
 		require.Equal(t, http.StatusNotFound, rs.Code)
 	})
+}
+
+func TestNRouter_ServeHTTP(t *testing.T) {
+	var (
+		r      = NewRouter("", log.LoggerMock{})
+		called = false
+	)
+
+	r.Get("/user/{id:\\d+}", HandlerFunc(func(ctx Context) error {
+		called = true
+
+		vars := ctx.Vars()
+		require.NotEmpty(t, vars)
+
+		var id int
+		err := vars.Get("id", &id)
+		require.NoError(t, err)
+		assert.Equal(t, 15, id)
+		return nil
+	}))
+
+	rs := httptest.NewRecorder()
+	rq := httptest.NewRequest(http.MethodPost, "/user/15", nil)
+	r.ServeHTTP(rs, rq)
+
+	time.Sleep(time.Millisecond * 5)
+
+	require.True(t, called)
 }
