@@ -67,12 +67,16 @@ func (N *NRouter) ServeHTTP(rs http.ResponseWriter, rq *http.Request) {
 
 	_ = N.wg.Add(1)
 	go func() {
-		if panicErr := recover(); panicErr != nil {
-			N.logger.P(panicErr)
-		}
+		defer func() {
+			N.wg.Done(1)
+
+			if panicErr := recover(); panicErr != nil {
+				N.logger.P(panicErr)
+			}
+		}()
 
 		route, ok := N.routes.Find(splitPath(rq.URL.Path))
-		if !ok {
+		if !ok || route.regexp == nil {
 			rs.WriteHeader(N.routeNotFoundCode)
 			return
 		}

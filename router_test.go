@@ -1,7 +1,9 @@
 package n
 
 import (
+	"context"
 	"gitea.voopsen/n/log"
+	"gitea.voopsen/n/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -14,10 +16,12 @@ func TestNewRouter(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		var (
 			router = NewRouter("", log.LoggerMock{})
+			wg     = sync.NewWaitGroup(1)
 			called = false
 		)
 
 		router.Handle("/users/all", HandlerFunc(func(ctx Context) error {
+			defer wg.Done(1)
 			called = true
 
 			require.NotNil(t, ctx.Request())
@@ -31,8 +35,7 @@ func TestNewRouter(t *testing.T) {
 		rq := httptest.NewRequest(http.MethodPost, "/users/all", nil)
 		router.ServeHTTP(rs, rq)
 
-		time.Sleep(time.Millisecond * 3)
-
+		require.NoError(t, wg.WaitTimeout(time.Millisecond*3))
 		require.True(t, called)
 		require.Equal(t, http.StatusAccepted, rs.Code)
 	})
@@ -43,10 +46,16 @@ func TestNewRouter(t *testing.T) {
 
 		rs := httptest.NewRecorder()
 		rq := httptest.NewRequest(http.MethodPost, "/users/all", nil)
+
+		router.Handle("/users/all/test", HandlerFunc(func(ctx Context) error {
+			return nil
+		}))
 		router.ServeHTTP(rs, rq)
 
-		time.Sleep(time.Millisecond * 3)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*3)
+		defer cancel()
 
+		require.NoError(t, router.Close(ctx))
 		require.Equal(t, http.StatusNotFound, rs.Code)
 	})
 	t.Run("bad-route", func(t *testing.T) {
@@ -69,8 +78,10 @@ func TestNewRouter(t *testing.T) {
 		rq := httptest.NewRequest(http.MethodPost, "/users//", nil)
 		router.ServeHTTP(rs, rq)
 
-		time.Sleep(time.Millisecond * 5)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*5)
+		defer cancel()
 
+		require.NoError(t, router.Close(ctx))
 		require.Equal(t, http.StatusNotFound, rs.Code)
 	})
 }
@@ -98,7 +109,9 @@ func TestNRouter_ServeHTTP(t *testing.T) {
 	rq := httptest.NewRequest(http.MethodPost, "/user/15", nil)
 	r.ServeHTTP(rs, rq)
 
-	time.Sleep(time.Millisecond * 4)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*4)
+	defer cancel()
 
+	require.NoError(t, r.Close(ctx))
 	require.True(t, called)
 }

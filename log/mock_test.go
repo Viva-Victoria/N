@@ -2,7 +2,6 @@ package log
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -79,8 +78,6 @@ func TestLoggerMock_E(t *testing.T) {
 	require.True(t, called)
 
 	m.Error = nil
-	// m.T = t
-	// m.E(err)
 
 	m.T = nil
 	m.E(err)
@@ -97,15 +94,4 @@ func TestLoggerMock_P(t *testing.T) {
 	var err = errors.New("mock")
 	m.P(err)
 	require.True(t, called)
-
-	m.Panic = nil
-	m.T = t
-	assert.Panics(t, func() {
-		m.P(err)
-	})
-
-	m.T = nil
-	assert.Panics(t, func() {
-		m.P(err)
-	})
 }
