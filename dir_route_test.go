@@ -2,6 +2,7 @@ package n
 
 import (
 	"errors"
+	"gitea.voopsen/n/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -20,9 +21,9 @@ func TestNewDirRoute(t *testing.T) {
 		fullPath string
 	)
 
-	r := NewDirRoute("/base/path/", func(path string, _ Handler) Route {
+	r := NewDirRoute("/base/path/", log.LoggerMock{}, func(path string, _ Handler) (Route, error) {
 		fullPath = path
-		return nil
+		return nil, nil
 	})
 
 	r.Handle("/route", HandlerFunc(func(ctx Context) error {
@@ -33,27 +34,53 @@ func TestNewDirRoute(t *testing.T) {
 }
 
 func TestNDirRoute_Handle(t *testing.T) {
-	var (
-		actualHandler Handler
-		expectedRoute Route
-		expectedError = errors.New("mock")
-	)
+	t.Run("success", func(t *testing.T) {
+		var (
+			actualHandler Handler
+			expectedRoute Route
+			expectedError = errors.New("mock")
+		)
 
-	r := NewDirRoute("/base/path/", func(path string, h Handler) Route {
-		assert.Equal(t, "/base/path/a", path)
-		actualHandler = h
-		expectedRoute = NewRoute(h)
-		return expectedRoute
+		r := NewDirRoute("/base/path/", log.LoggerMock{}, func(path string, h Handler) (Route, error) {
+			assert.Equal(t, "/base/path/a", path)
+			actualHandler = h
+			expectedRoute = NewRoute(h)
+			return expectedRoute, nil
+		})
+		route := r.Handle("/a", HandlerFunc(func(ctx Context) error {
+			return expectedError
+		}))
+
+		require.NotNil(t, route)
+		assert.Equal(t, expectedRoute, route)
+
+		require.NotNil(t, actualHandler)
+		assert.Error(t, expectedError, actualHandler.Handle(nil))
 	})
-	route := r.Handle("/a", HandlerFunc(func(ctx Context) error {
-		return expectedError
-	}))
+	t.Run("log-error", func(t *testing.T) {
+		var (
+			expectedErr = errors.New("mock")
+			called      bool
+			actualErr   error
+		)
 
-	require.NotNil(t, route)
-	assert.Equal(t, expectedRoute, route)
+		logger := log.LoggerMock{
+			Error: func(err error) {
+				actualErr = err
+			},
+		}
 
-	require.NotNil(t, actualHandler)
-	assert.Error(t, expectedError, actualHandler.Handle(nil))
+		r := NewDirRoute("/base/path/", logger, func(path string, h Handler) (Route, error) {
+			called = true
+			return nil, expectedErr
+		})
+		_ = r.Handle("/a", HandlerFunc(func(ctx Context) error {
+			return nil
+		}))
+
+		assert.True(t, called)
+		assert.Error(t, expectedErr, actualErr)
+	})
 }
 
 func TestNDirRoute_Dir(t *testing.T) {
@@ -63,11 +90,11 @@ func TestNDirRoute_Dir(t *testing.T) {
 		expectedError = errors.New("mock")
 	)
 
-	r := NewDirRoute("/base/path/", func(path string, h Handler) Route {
+	r := NewDirRoute("/base/path/", log.LoggerMock{}, func(path string, h Handler) (Route, error) {
 		assert.Equal(t, "/base/path/sub/route", path)
 		actualHandler = h
 		expectedRoute = NewRoute(h)
-		return expectedRoute
+		return expectedRoute, nil
 	})
 	subR := r.Dir("/sub")
 	require.NotNil(t, subR)
@@ -112,9 +139,9 @@ func TestNDirRoute_Method(t *testing.T) {
 }
 
 func testHandler(t *testing.T, createAddRouteFunc func(d *NDirRoute) func(string, Handler) Route, method string) {
-	r := NewDirRoute("/base", func(path string, h Handler) Route {
+	r := NewDirRoute("/base", log.LoggerMock{}, func(path string, h Handler) (Route, error) {
 		assert.Equal(t, "/base/route", path)
-		return NewRoute(h)
+		return NewRoute(h), nil
 	})
 	route := createAddRouteFunc(r)("route", HandlerFunc(func(ctx Context) error {
 		return nil

@@ -13,6 +13,7 @@ func ParseRoute(raw string) (*regexp.Regexp, []tree.Matcher, error) {
 
 	matchers := make([]tree.Matcher, 0, len(path))
 	for _, segment := range path {
+		segment = strings.Trim(segment, " \t\n\r")
 		if len(segment) == 0 {
 			return nil, nil, fmt.Errorf(`bad route: "%s"`, raw)
 		}

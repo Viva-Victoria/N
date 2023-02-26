@@ -2,7 +2,6 @@ package n
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -84,7 +83,6 @@ func scanSlice(pointer, typer reflect.Value, values []string, deep int) error {
 		}
 
 		if typer.Kind() == reflect.Slice {
-			log.Println(stringValue, deep)
 			if deep > MaxDeep {
 				return ErrTooDeep
 			}
