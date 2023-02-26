@@ -31,7 +31,7 @@ func NewRouter() *NRouter {
 		routes: tree.NewTree[routeMeta](),
 	}
 
-	nr.handle = func(path string, handler Handler) Route {
+	nr.newRoute = func(path string, handler Handler) Route {
 		global, matchers, err := ParseRoute(path)
 		if err != nil {
 

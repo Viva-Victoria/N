@@ -1,8 +1,8 @@
 package n
 
 import (
-	"encoding/json"
 	"net/http"
+	"net/textproto"
 )
 
 type Values interface {
@@ -19,15 +19,17 @@ type HeaderValues struct {
 }
 
 func (h HeaderValues) Add(key string, value any) {
-	h.header.Add(key, anyToString(value))
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	h.header[key] = append(h.header[key], anyToStrings(value)...)
 }
 
 func (h HeaderValues) Set(key string, value any) {
-	h.header.Set(key, anyToString(value))
+	key = textproto.CanonicalMIMEHeaderKey(key)
+	h.header[key] = anyToStrings(value)
 }
 
 func (h HeaderValues) Get(key string, ref any) error {
-	return stringToAny(h.header.Get(key), ref)
+	return stringToAny(h.header[key], ref)
 }
 
 func (h HeaderValues) GetString(key string) string {
@@ -45,23 +47,17 @@ func (h HeaderValues) Delete(key string) {
 type MapValues map[string][]string
 
 func (m MapValues) Add(key string, value any) {
-	m[key] = append(m[key], anyToString(value))
+	m[key] = append(m[key], anyToStrings(value)...)
 }
 
 func (m MapValues) Set(key string, value any) {
-	arr, ok := m[key]
-	if ok {
-		arr = arr[:1:1]
-	} else {
-		arr = make([]string, 1, 1)
-	}
-
-	arr[0] = anyToString(value)
-	m[key] = arr
+	m[key] = anyToStrings(value)
+	l := len(m[key])
+	m[key] = m[key][:l:l]
 }
 
 func (m MapValues) Get(key string, ref any) error {
-	return stringToAny(m[key][0], ref)
+	return stringToAny(m[key], ref)
 }
 
 func (m MapValues) GetString(key string) string {
@@ -74,22 +70,4 @@ func (m MapValues) Values(key string) []string {
 
 func (m MapValues) Delete(key string) {
 	delete(m, key)
-}
-
-func anyToString(a any) string {
-	if s, ok := a.(string); ok {
-		return s
-	}
-
-	bytes, _ := json.Marshal(a)
-	return string(bytes)
-}
-
-func stringToAny(s string, ref any) error {
-	if sp, ok := ref.(*string); ok {
-		*sp = s
-		return nil
-	}
-
-	return json.Unmarshal([]byte(s), ref)
 }

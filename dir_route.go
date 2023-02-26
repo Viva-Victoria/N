@@ -18,26 +18,26 @@ type DirRoute interface {
 
 type NDirRoute struct {
 	basePath string
-	handle   func(path string, handler Handler) Route
+	newRoute func(path string, handler Handler) Route
 }
 
 var (
 	_pathFixer = strings.NewReplacer("\\", "/")
 )
 
-func NewDirRoute(basePath string, handle func(path string, handler Handler) Route) *NDirRoute {
+func NewDirRoute(basePath string, newRoute func(path string, handler Handler) Route) *NDirRoute {
 	return &NDirRoute{
 		basePath: _pathFixer.Replace(basePath),
-		handle:   handle,
+		newRoute: newRoute,
 	}
 }
 
 func (N NDirRoute) Dir(path string) DirRoute {
-	return NewDirRoute(N.getPath(path), N.handle)
+	return NewDirRoute(N.getPath(path), N.newRoute)
 }
 
 func (N NDirRoute) Handle(path string, handler Handler) Route {
-	return N.handle(N.getPath(path), handler)
+	return N.newRoute(N.getPath(path), handler)
 }
 
 func (N NDirRoute) Get(path string, handler Handler) Route {
