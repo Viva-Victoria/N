@@ -9,13 +9,16 @@ type Route interface {
 }
 
 type NRoute struct {
-	methods     []string
-	middlewares []Middleware
-	handler     Handler
+	methods         []string
+	methodsCallback func(methods []string)
+	middlewares     []Middleware
+	handler         Handler
 }
 
-func NewRoute(handler Handler) *NRoute {
-	r := &NRoute{}
+func NewRoute(handler Handler, f func(methods []string)) *NRoute {
+	r := &NRoute{
+		methodsCallback: f,
+	}
 
 	r.middlewares = append(r.middlewares, httpMethodMiddleware(r))
 
@@ -38,6 +41,7 @@ func (N *NRoute) Handler() Handler {
 
 func (N *NRoute) Methods(methods ...string) Route {
 	N.methods = methods
+	N.methodsCallback(N.methods)
 	return N
 }
 

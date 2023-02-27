@@ -64,5 +64,6 @@ func (N NContext) WriteJSON(a any) error {
 		_ = N.rs.Close()
 	}()
 
+	N.rs.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(N.rs).Encode(a)
 }

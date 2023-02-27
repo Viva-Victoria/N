@@ -6,12 +6,14 @@ import (
 	"gitea.voopsen/n/log"
 	"gitea.voopsen/n/sync"
 	"gitea.voopsen/n/tree"
+	"github.com/google/uuid"
 	"go.uber.org/atomic"
 	"net/http"
 	"regexp"
 )
 
 type routeMeta struct {
+	id      string
 	regexp  *regexp.Regexp
 	handler Handler
 }
@@ -24,23 +26,28 @@ type Router interface {
 
 type NRouter struct {
 	NDirRoute
-	badRequestCode    int
-	internalErrorCode int
-	routeNotFoundCode int
-	routes            tree.Tree[routeMeta]
-	logger            log.Logger
-	listening         atomic.Bool
-	wg                sync.WaitGroup
+	config    RouterConfig
+	routes    tree.Tree[map[string]routeMeta]
+	logger    log.Logger
+	listening atomic.Bool
+	wg        sync.WaitGroup
 }
 
-func NewRouter(basePath string, logger log.Logger) *NRouter {
+func NewRouter(basePath string, logger log.Logger, options ...RouterOption) *NRouter {
+	config := RouterConfig{
+		BadRequestCode:    http.StatusBadRequest,
+		InternalErrorCode: http.StatusInternalServerError,
+		RouteNotFoundCode: http.StatusNotFound,
+	}
+	for _, o := range options {
+		o.Apply(&config)
+	}
+
 	nr := &NRouter{
-		routes:            tree.NewTree[routeMeta](),
-		listening:         *atomic.NewBool(true),
-		wg:                sync.NewWaitGroup(1),
-		badRequestCode:    http.StatusBadRequest,
-		internalErrorCode: http.StatusInternalServerError,
-		routeNotFoundCode: http.StatusNotFound,
+		routes:    tree.NewTree[map[string]routeMeta](),
+		listening: *atomic.NewBool(true),
+		wg:        sync.NewWaitGroup(1),
+		config:    config,
 	}
 
 	nr.NDirRoute = *NewDirRoute(basePath, logger, func(path string, handler Handler) (Route, error) {
@@ -49,12 +56,32 @@ func NewRouter(basePath string, logger log.Logger) *NRouter {
 			return nil, err
 		}
 
-		nr.routes.Add(matchers, routeMeta{
+		v, ok := nr.routes.Get(matchers)
+		if !ok || len(v) == 0 {
+			v = make(map[string]routeMeta)
+			nr.routes.Add(matchers, v)
+		}
+		meta := routeMeta{
+			id:      uuid.NewString(),
 			regexp:  global,
 			handler: handler,
-		})
+		}
 
-		return NewRoute(handler), nil
+		if _, ok = v["*"]; !ok {
+			v["*"] = meta
+		}
+
+		return NewRoute(handler, func(methods []string) {
+			for m := range v {
+				if v[m].id == meta.id {
+					delete(v, m)
+				}
+			}
+
+			for _, m := range methods {
+				v[m] = meta
+			}
+		}), nil
 	})
 
 	return nr
@@ -66,7 +93,7 @@ func (N *NRouter) ServeHTTP(rs http.ResponseWriter, rq *http.Request) {
 	}
 
 	_ = N.wg.Add(1)
-	go func() {
+	func() {
 		defer func() {
 			N.wg.Done(1)
 
@@ -75,9 +102,18 @@ func (N *NRouter) ServeHTTP(rs http.ResponseWriter, rq *http.Request) {
 			}
 		}()
 
-		route, ok := N.routes.Find(splitPath(rq.URL.Path))
+		routes, ok := N.routes.Find(splitPath(rq.URL.Path))
+		if !ok || len(routes) == 0 {
+			rs.WriteHeader(N.config.RouteNotFoundCode)
+			return
+		}
+
+		route, ok := routes[rq.Method]
 		if !ok || route.regexp == nil {
-			rs.WriteHeader(N.routeNotFoundCode)
+			route, ok = routes["*"]
+		}
+		if !ok || route.regexp == nil {
+			rs.WriteHeader(N.config.RouteNotFoundCode)
 			return
 		}
 
@@ -110,11 +146,11 @@ func (N *NRouter) ServeHTTP(rs http.ResponseWriter, rq *http.Request) {
 
 		var badRequestError BadRequestError
 		if errors.As(err, &badRequestError) {
-			newRS.WriteHeader(N.badRequestCode)
+			newRS.WriteHeader(N.config.BadRequestCode)
 			return
 		}
 
-		newRS.WriteHeader(N.internalErrorCode)
+		newRS.WriteHeader(N.config.InternalErrorCode)
 	}()
 }
 

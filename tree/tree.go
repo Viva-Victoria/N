@@ -24,6 +24,22 @@ func (t *Tree[V]) Add(path []Matcher, v V) {
 	t.count++
 }
 
+func (t *Tree[V]) Get(path []Matcher) (V, bool) {
+	var v V
+
+	currentNode := &t.root
+	for _, matcher := range path {
+		existLeaf := currentNode.FindChild(matcher)
+		if existLeaf == nil {
+			return v, false
+		}
+
+		currentNode = existLeaf
+	}
+
+	return currentNode.GetValue(), true
+}
+
 func (t *Tree[V]) Find(path []string) (V, bool) {
 	var (
 		v           V
