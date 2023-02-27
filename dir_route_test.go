@@ -2,7 +2,7 @@ package n
 
 import (
 	"errors"
-	"gitea.voopsen/n/log"
+	"gitea.voopsen/OSS/n/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"

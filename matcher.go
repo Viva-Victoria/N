@@ -2,7 +2,7 @@ package n
 
 import (
 	"fmt"
-	"gitea.voopsen/n/tree"
+	"gitea.voopsen/OSS/n/tree"
 	"regexp"
 	"strings"
 )

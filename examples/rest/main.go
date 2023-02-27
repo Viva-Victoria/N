@@ -1,8 +1,8 @@
 package main
 
 import (
-	"gitea.voopsen/n"
-	"gitea.voopsen/n/log"
+	"gitea.voopsen/OSS/n"
+	"gitea.voopsen/OSS/n/log"
 	"net/http"
 	"os"
 	"os/signal"

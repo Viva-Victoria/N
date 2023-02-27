@@ -1,4 +1,4 @@
-module gitea.voopsen/n
+module gitea.voopsen/OSS/n
 
 go 1.18
 

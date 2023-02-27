@@ -1,7 +1,7 @@
 package n
 
 import (
-	"gitea.voopsen/n/tree"
+	"gitea.voopsen/OSS/n/tree"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"regexp"

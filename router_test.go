@@ -2,8 +2,8 @@ package n
 
 import (
 	"context"
-	"gitea.voopsen/n/log"
-	"gitea.voopsen/n/sync"
+	"gitea.voopsen/OSS/n/log"
+	"gitea.voopsen/OSS/n/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"

@@ -1,7 +1,7 @@
 package n
 
 import (
-	"gitea.voopsen/n/log"
+	"gitea.voopsen/OSS/n/log"
 	"net/http"
 	"path"
 	"strings"
